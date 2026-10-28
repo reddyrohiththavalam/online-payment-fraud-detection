@@ -40,6 +40,20 @@ accuracy, calibrated real-world risk, or performance on another payment system.
 
 Use `.\.venv\Scripts\python.exe train.py --help` to see training options.
 
+## Model Evaluation Metrics
+
+Display the full model evaluation report (Accuracy, Precision, Recall, F1, ROC AUC, MCC, Log Loss):
+
+```powershell
+.\.venv\Scripts\python.exe evaluate.py
+```
+
+To run a live batch evaluation across all 1.27 million test transactions:
+
+```powershell
+.\.venv\Scripts\python.exe evaluate.py --full
+```
+
 ## Score a CSV
 
 The predictor accepts raw PaySim data (including its `type` column) or the
