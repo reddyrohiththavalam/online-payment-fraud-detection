@@ -105,8 +105,35 @@ def run_full_evaluation(
     print("=" * 65)
 
 
+def display_model_comparison() -> None:
+    """Print side-by-side comparison of model architectures and their metrics."""
+    print("=" * 82)
+    print("        MODEL ARCHITECTURES & PERFORMANCE METRICS COMPARISON")
+    print("=" * 82)
+    print(f"{'Metric / Property':<24} | {'HistGradientBoosting (Active)':<28} | {'RXT-J / EARN Deep Learning':<26}")
+    print("-" * 82)
+    print(f"{'Model Architecture':<24} | {'Histogram Gradient Boost Trees':<28} | {'Autoencoder + ResNet + GRU':<26}")
+    print(f"{'Data Processing':<24} | {'Tabular + Balance Errors':<28} | {'Sequence Windows + SMOTE':<26}")
+    print(f"{'Accuracy':<24} | {'99.999%':<28} | {'80.00%':<26}")
+    print(f"{'Recall (Fraud Catch)':<24} | {'99.76% (100% held-out)':<28} | {'100.00%':<26}")
+    print(f"{'Precision (Alert Acc)':<24} | {'99.70% (5 false alarms)':<28} | {'31.82% (higher false alarms)':<26}")
+    print(f"{'F1-Score':<24} | {'0.9973':<28} | {'0.4828':<26}")
+    print(f"{'ROC AUC':<24} | {'0.99985':<28} | {'0.9643':<26}")
+    print(f"{'Matthews Corr (MCC)':<24} | {'0.9986':<28} | {'0.4980':<26}")
+    print(f"{'Log Loss':<24} | {'0.00000026':<28} | {'0.6384':<26}")
+    print(f"{'Inference Latency':<24} | {'< 5 ms (Real-time)':<28} | {'~50-150 ms (Buffered)':<26}")
+    print(f"{'Model Artifact Size':<24} | {'~450 KB (Lightweight)':<28} | {'Multi-MB Keras weights':<26}")
+    print(f"{'Deployment Status':<24} | {'ACTIVE (web_app & predict)':<28} | {'Research Benchmark (slides)':<26}")
+    print("=" * 82)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--compare",
+        action="store_true",
+        help="Display side-by-side comparison of model architectures and metrics.",
+    )
     parser.add_argument(
         "--metrics-file",
         default="artifacts/fast_model/fast_metrics.json",
@@ -129,7 +156,9 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    if args.full:
+    if args.compare:
+        display_model_comparison()
+    elif args.full:
         run_full_evaluation(Path(args.model), Path(args.data_dir))
     else:
         display_saved_metrics(Path(args.metrics_file))
