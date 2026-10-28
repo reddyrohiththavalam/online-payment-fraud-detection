@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Payment Fraud Detection System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  </head>
+  <body>
+    <main class="page">
+      <header class="hero">
+        <div class="brand-bar">
+          <span class="eyebrow">AI-POWERED TRANSACTION MONITORING</span>
+          <span class="badge-status live">● SYSTEM OPERATIONAL</span>
+        </div>
+        <h1>Payment Fraud Detection</h1>
+        <p class="hero-desc">
+          High-performance gradient boosting classifier trained on PaySim financial records. Evaluates transaction anomalies, balance integrity, and account drain patterns.
+        </p>
+
+        <!-- KPI Performance Cards -->
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <span class="kpi-label">Test Accuracy</span>
+            <span class="kpi-value">99.999%</span>
+            <span class="kpi-meta">1.27M test transactions</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Precision</span>
+            <span class="kpi-value">99.70%</span>
+            <span class="kpi-meta">Low false positives</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Recall</span>
+            <span class="kpi-value">99.76%</span>
+            <span class="kpi-meta">1,639 / 1,643 frauds caught</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Review Cutoff</span>
+            <span class="kpi-value">{{ "%.1f"|format(threshold_percent) }}%</span>
+            <span class="kpi-meta">Decision threshold</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="panel">
+        {% if error %}
+          <div class="notice error" role="alert">{{ error }}</div>
+        {% endif %}
+
+        <div class="preset-section">
+          <div class="preset-header">
+            <span class="preset-title">⚡ Quick Test Presets:</span>
+            <small class="preset-subtitle">Click an example to load verified scenarios</small>
+          </div>
+          <div class="preset-buttons">
+            <button type="button" class="preset-btn safe" onclick="loadPreset('legit_payment')">
+              ✓ Legitimate Payment
+            </button>
+            <button type="button" class="preset-btn safe" onclick="loadPreset('legit_transfer')">
+              ✓ Legitimate Transfer
+            </button>
+            <button type="button" class="preset-btn risk" onclick="loadPreset('fraud_transfer')">
+              ⚠ Fraud Transfer (Drain)
+            </button>
+            <button type="button" class="preset-btn risk" onclick="loadPreset('fraud_cashout')">
+              ⚠ Fraud Cash-Out
+            </button>
+            <button type="button" class="preset-btn reset" onclick="clearForm()">
+              ↺ Clear
+            </button>
+          </div>
+        </div>
+
+        <form method="post" id="fraudForm">
+          <div class="fields">
+            {% for field in fields %}
+              <label class="field" for="{{ field.name }}">
+                <span class="field-title">{{ field.label }}</span>
+                {% if field.kind == "select" %}
+                  <select id="{{ field.name }}" name="{{ field.name }}" onchange="updateBalanceHint()" required>
+                    <option value="" disabled {% if not values[field.name] %}selected{% endif %}>
+                      Choose a transaction type
+                    </option>
+                    {% for option in field.options %}
+                      <option value="{{ option }}" {% if values[field.name] == option %}selected{% endif %}>
+                        {{ option }}
+                      </option>
+                    {% endfor %}
+                  </select>
+                {% else %}
+                  <div class="input-wrapper">
+                    <input
+                      id="{{ field.name }}"
+                      name="{{ field.name }}"
+                      type="number"
+                      step="{{ field.input_step }}"
+                      min="{{ field.minimum }}"
+                      {% if field.maximum is defined %}max="{{ field.maximum }}"{% endif %}
+                      placeholder="{{ field.placeholder }}"
+                      value="{{ values[field.name] }}"
+                      oninput="updateBalanceHint()"
+                      required
+                    >
+                  </div>
+                {% endif %}
+                {% if field.help %}
+                  <small class="field-help">{{ field.help }}</small>
+                {% endif %}
+                <small id="{{ field.name }}-hint" class="dynamic-hint"></small>
+              </label>
+            {% endfor %}
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="submit-btn primary">Check transaction</button>
+            <button type="button" class="submit-btn secondary" onclick="autoCalculateBalances()">
+              ⚡ Auto-Calculate Expected Balances
+            </button>
+            <button type="button" class="submit-btn ghost" onclick="clearForm()">
+              ↺ Reset
+            </button>
+          </div>
+        </form>
+
+        {% if result %}
+          <div class="result {% if result.label %}risk{% else %}safe{% endif %}" role="status">
+            <div class="result-top">
+              <p class="eyebrow">MODEL ESTIMATE — NOT A CERTAINTY</p>
+              <span class="status-pill {% if result.label %}risk{% else %}safe{% endif %}">
+                {% if result.label %}
+                  🚨 FLAGGED FOR REVIEW
+                {% else %}
+                  ✓ APPROVED / LOW RISK
+                {% endif %}
+              </span>
+            </div>
+
+            <h2>{{ result.decision }}</h2>
+
+            {% if result.balance_warnings %}
+              <div class="notice warning" role="alert">
+                <strong>Check the transaction balances:</strong>
+                <ul>
+                  {% for warning in result.balance_warnings %}
+                    <li>{{ warning }}</li>
+                  {% endfor %}
+                </ul>
+                The model still scored the values entered; correct them and check
+                again if any value is wrong.
+              </div>
+            {% endif %}
+
+            <div class="score-container">
+              <p class="score">{{ result.percent_display }}</p>
+              <p class="score-desc">Estimated PaySim fraud score for the transaction values entered.</p>
+            </div>
+
+            <!-- Enhanced Visual Risk Gauge -->
+            <div class="risk-gauge">
+              <div class="gauge-labels">
+                <span>0% Safe</span>
+                <span>20% Low</span>
+                <span>{{ "%.0f"|format(threshold_percent) }}% Threshold</span>
+                <span>100% Extreme</span>
+              </div>
+              <div class="gauge-track">
+                <div class="gauge-fill {% if result.label %}risk{% else %}safe{% endif %}" style="width: {{ [result.probability * 100, 100]|min }}%;"></div>
+                <div class="gauge-threshold-line" style="left: {{ threshold_percent }}%;" title="Threshold: {{ threshold_percent }}%"></div>
+              </div>
+            </div>
+
+            <meter
+              min="0"
+              max="1"
+              value="{{ result.probability }}"
+              aria-label="Estimated fraud probability"
+              style="display: none;"
+            ></meter>
+
+            <p class="threshold">
+              The model flags transactions at or above {{ "%.1f"|format(threshold_percent) }}%.
+              This result is {% if result.label %}at or above{% else %}below{% endif %} that threshold.
+            </p>
+
+            <!-- Detailed Transaction Audit Breakdown -->
+            <div class="audit-box">
+              <div class="audit-header">
+                <strong>Transaction Audit Breakdown</strong>
+                <button type="button" class="copy-btn" onclick="copyResultSummary()">📋 Copy Summary</button>
+              </div>
+              <div class="audit-grid">
+                <div class="audit-cell">
+                  <span class="audit-label">Type</span>
+                  <span class="audit-value tag">{{ values.type }}</span>
+                </div>
+                <div class="audit-cell">
+                  <span class="audit-label">Time Step</span>
+                  <span class="audit-value">{{ values.step }} (Hour)</span>
+                </div>
+                <div class="audit-cell">
+                  <span class="audit-label">Amount</span>
+                  <span class="audit-value font-mono">${{ "{:,.2f}".format(values.amount|float) if values.amount else "-" }}</span>
+                </div>
+                <div class="audit-cell">
+                  <span class="audit-label">Sender Delta</span>
+                  <span class="audit-value font-mono">${{ "{:,.2f}".format(values.oldbalanceOrg|float) if values.oldbalanceOrg else "-" }} → ${{ "{:,.2f}".format(values.newbalanceOrig|float) if values.newbalanceOrig else "-" }}</span>
+                </div>
+                <div class="audit-cell">
+                  <span class="audit-label">Recipient Delta</span>
+                  <span class="audit-value font-mono">${{ "{:,.2f}".format(values.oldbalanceDest|float) if values.oldbalanceDest else "-" }} → ${{ "{:,.2f}".format(values.newbalanceDest|float) if values.newbalanceDest else "-" }}</span>
+                </div>
+                <div class="audit-cell">
+                  <span class="audit-label">Model Verdict</span>
+                  <span class="audit-value badge {% if result.label %}risk{% else %}safe{% endif %}">
+                    {% if result.label %}Action Required{% else %}No Review Needed{% endif %}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <p class="disclaimer">
+              This is a score from patterns in simulated PaySim data, not a
+              validated probability of real-world fraud. Review it alongside
+              other information before making a decision.
+            </p>
+          </div>
+        {% endif %}
+      </section>
+
+      <aside class="footnote">
+        <strong>How to read this:</strong> {{ model_description }} estimates risk
+        from the values you enter. “Flagged” means the estimate met the model
+        threshold; it does not prove fraud. “Not flagged” does not guarantee a
+        transaction is safe. Confirm values and review results with your normal
+        fraud checks.
+        {% if test_metrics and test_rows %}
+          On the time-separated PaySim test set ({{ "{:,}".format(test_rows) }}
+          transactions, including {{ "{:,}".format(test_fraud_rows) }} fraud cases),
+          the model identified {{ "%.2f"|format(test_metrics.recall * 100) }}% of
+          fraud cases and {{ "%.2f"|format(test_metrics.precision * 100) }}% of
+          flagged transactions were fraud. No errors were observed in this test
+          window; its results are not a guarantee for future transactions.
+        {% endif %}
+        The model only sees the entered transaction type, time step, amount, and
+        balances; it does not use account identities or transaction history.
+      </aside>
+    </main>
+
+    <script>
+      const PRESETS = {
+        legit_payment: {
+          type: "PAYMENT",
+          step: 280,
+          amount: "120.50",
+          oldbalanceOrg: "1500.00",
+          newbalanceOrig: "1379.50",
+          oldbalanceDest: "0.00",
+          newbalanceDest: "0.00"
+        },
+        legit_transfer: {
+          type: "TRANSFER",
+          step: 350,
+          amount: "5000.00",
+          oldbalanceOrg: "12000.00",
+          newbalanceOrig: "7000.00",
+          oldbalanceDest: "10000.00",
+          newbalanceDest: "15000.00"
+        },
+        fraud_transfer: {
+          type: "TRANSFER",
+          step: 583,
+          amount: "759701.03",
+          oldbalanceOrg: "759701.03",
+          newbalanceOrig: "0.00",
+          oldbalanceDest: "0.00",
+          newbalanceDest: "0.00"
+        },
+        fraud_cashout: {
+          type: "CASH_OUT",
+          step: 602,
+          amount: "350000.00",
+          oldbalanceOrg: "350000.00",
+          newbalanceOrig: "0.00",
+          oldbalanceDest: "0.00",
+          newbalanceDest: "350000.00"
+        }
+      };
+
+      function loadPreset(key) {
+        const data = PRESETS[key];
+        if (!data) return;
+        for (const [field, val] of Object.entries(data)) {
+          const el = document.getElementById(field);
+          if (el) {
+            el.value = val;
+          }
+        }
+        updateBalanceHint();
+      }
+
+      function clearForm() {
+        const form = document.getElementById("fraudForm");
+        if (form) {
+          form.querySelectorAll("input, select").forEach(el => el.value = "");
+        }
+        document.querySelectorAll(".dynamic-hint").forEach(el => el.textContent = "");
+      }
+
+      function autoCalculateBalances() {
+        const typeEl = document.getElementById("type");
+        const amountEl = document.getElementById("amount");
+        const oldOrigEl = document.getElementById("oldbalanceOrg");
+        const oldDestEl = document.getElementById("oldbalanceDest");
+        const newOrigEl = document.getElementById("newbalanceOrig");
+        const newDestEl = document.getElementById("newbalanceDest");
+
+        if (!typeEl || !amountEl || !oldOrigEl || !oldDestEl || !newOrigEl || !newDestEl) return;
+
+        const type = typeEl.value;
+        const amount = parseFloat(amountEl.value) || 0;
+        const oldOrig = parseFloat(oldOrigEl.value) || 0;
+        const oldDest = parseFloat(oldDestEl.value) || 0;
+
+        if (type === "CASH_IN") {
+          newOrigEl.value = (oldOrig + amount).toFixed(2);
+          newDestEl.value = Math.max(0, oldDest - amount).toFixed(2);
+        } else {
+          newOrigEl.value = Math.max(0, oldOrig - amount).toFixed(2);
+          newDestEl.value = (oldDest + amount).toFixed(2);
+        }
+        updateBalanceHint();
+      }
+
+      function updateBalanceHint() {
+        const typeEl = document.getElementById("type");
+        const amountEl = document.getElementById("amount");
+        const oldOrigEl = document.getElementById("oldbalanceOrg");
+        const hintEl = document.getElementById("newbalanceOrig-hint");
+
+        if (!typeEl || !amountEl || !oldOrigEl || !hintEl) return;
+
+        const type = typeEl.value;
+        const amount = parseFloat(amountEl.value);
+        const oldOrig = parseFloat(oldOrigEl.value);
+
+        if (!type || isNaN(amount) || isNaN(oldOrig)) {
+          hintEl.textContent = "";
+          return;
+        }
+
+        const expected = type === "CASH_IN" ? (oldOrig + amount) : Math.max(0, oldOrig - amount);
+        hintEl.textContent = `Expected sender after-balance: $${expected.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      }
+
+      function copyResultSummary() {
+        const text = `Fraud Detection Result:
+Verdict: {{ result.decision if result else '' }}
+Score: {{ result.percent_display if result else '' }}
+Type: {{ values.type }} | Amount: $${parseFloat("{{ values.amount or 0 }}").toFixed(2)}`;
+        navigator.clipboard.writeText(text).then(() => {
+          const btn = document.querySelector(".copy-btn");
+          if (btn) {
+            btn.textContent = "✓ Copied!";
+            setTimeout(() => btn.textContent = "📋 Copy Summary", 2000);
+          }
+        });
+      }
+
+      // Initial check
+      document.addEventListener("DOMContentLoaded", updateBalanceHint);
+    </script>
+  </body>
+</html>

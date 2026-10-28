@@ -1,0 +1,73 @@
+{
+  "model": "HistGradientBoostingClassifier",
+  "data_directory": "data\\data\\data\\processed",
+  "training_split_rows": 5090096,
+  "training_window_rows": 5007371,
+  "training_sample_rows": 255274,
+  "training_sample_fraud_rows": 5274,
+  "training_sample_legitimate_rows": 250000,
+  "training_sample_max_legitimate_rows": 250000,
+  "validation_training_step_range": [
+    1,
+    550
+  ],
+  "training_step_range": [
+    1,
+    600
+  ],
+  "validation_step_range": [
+    551,
+    600
+  ],
+  "validation_rows": 74519,
+  "validation_fraud_rows": 435,
+  "validation_metrics": {
+    "threshold": 0.5,
+    "accuracy": 0.9999865806036045,
+    "precision": 1.0,
+    "recall": 0.9977011494252873,
+    "f1": 0.998849252013809,
+    "mcc": 0.9988431720976769,
+    "log_loss": 0.00017525143023759863,
+    "auc_roc": 0.9999999689696752,
+    "average_precision": 0.9999947274069387
+  },
+  "test_step_range": [
+    601,
+    null
+  ],
+  "test_rows": 20848,
+  "test_fraud_rows": 304,
+  "iterations_used": 132,
+  "max_iterations": 150,
+  "max_leaf_nodes": 31,
+  "learning_rate": 0.1,
+  "seed": 42,
+  "feature_columns": [
+    "step",
+    "amount",
+    "oldbalanceOrg",
+    "newbalanceOrig",
+    "oldbalanceDest",
+    "newbalanceDest",
+    "type_CASH_IN",
+    "type_CASH_OUT",
+    "type_DEBIT",
+    "type_PAYMENT",
+    "type_TRANSFER",
+    "errorBalanceOrig",
+    "errorBalanceDest"
+  ],
+  "metrics": {
+    "threshold": 0.5,
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "mcc": 1.0,
+    "log_loss": 2.585198822870867e-07,
+    "auc_roc": 1.0,
+    "average_precision": 1.0
+  },
+  "model_file": "artifacts\\fast_model\\fraud_hist_gradient_boosting.joblib"
+}
