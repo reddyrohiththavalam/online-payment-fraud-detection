@@ -24,3 +24,4 @@ Thumbs.db
 
 # Temporary prediction outputs
 artifacts/fast_model/predictions.csv
+
