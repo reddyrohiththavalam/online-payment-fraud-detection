@@ -67,6 +67,12 @@ By default, the model is loaded from
 `artifacts\fast_model\fraud_hist_gradient_boosting.joblib`. Override it with
 `--model`; adjust the batch size with `--chunksize`.
 
+## Interactive Jupyter Notebook Walkthrough
+
+Run each module cell-by-cell in the interactive notebook:
+- Open [`fraud_detection_walkthrough.ipynb`](fraud_detection_walkthrough.ipynb) in VS Code or Jupyter.
+- Contains 11 sequential modules covering data loading, feature engineering, class re-weighting, model architecture inspection, performance metrics, visual confusion matrix/ROC plots, single-transaction scoring, batch scoring, and model comparison.
+
 ## Run the browser app
 
 ```powershell
